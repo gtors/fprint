@@ -219,12 +219,29 @@ cdef class Image:
 
 cdef class DiscoveredDevices:
     cdef fp_dscv_dev **devices
+    cdef int number_devices
 
     def __cinit__(self):
         self.devices = fp_discover_devs()
 
+        cdef int i = 0
+        while self.devices[i] != NULL:
+            i += 1
+        self.number_devices = i
+
     def __dealloc__(self):
         fp_dscv_devs_free(self.devices)
+
+    def __getitem__(self, int i):
+        cdef fp_dscv_dev *dd
+        if i < self.number_devices:
+            dd = self.devices[i]
+            return DiscoverdDevice.new(dd)
+        else:
+            return None
+
+    def __len__(self):
+        return self.number_devices
 
     def dev_for_print_data(self, PrintData p):
         cdef fp_dscv_dev *dev = fp_dscv_dev_for_print_data(self.devices, p.ptr)
@@ -366,7 +383,8 @@ cdef class Device:
 #
 #
 def init():
-    fp_init()
+    if fp_init() < 0:
+        raise RuntimeError("Failed to init libfprint")
 
 def exit():
     fp_exit()
