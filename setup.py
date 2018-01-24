@@ -6,6 +6,8 @@ setup(
   name='fprint',
   version='0.1.0',
   ext_modules=cythonize([
-    Extension("fprint", ["fprint.pyx"]),
+    Extension("fprint", 
+        sources=["fprint.pyx"],
+        libraries=["fprint"]),
     ]),
 )
