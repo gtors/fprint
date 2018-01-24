@@ -1,0 +1,5 @@
+fprint.c
+build
+dist
+.*
+!.gitignore
