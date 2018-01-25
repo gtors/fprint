@@ -1,3 +1,5 @@
+import logging
+
 from fprint cimport *
 from cpython cimport PyBytes_FromStringAndSize
 from posix.types cimport suseconds_t, time_t
@@ -406,7 +408,31 @@ cdef class Device:
         if self.ptr != NULL:
             pd = PrintData()
             i = Image()
-            fp_enroll_finger_img(self.ptr, &pd.ptr, &i.ptr)
+            r = FP_ENROLL_RETRY
+            while r != FP_ENROLL_COMPLETE:
+                r = fp_enroll_finger_img(self.ptr, &pd.ptr, &i.ptr)
+                if r < 0:
+                    raise RuntimeError("Internal I/O error while enrolling: %i" % r)
+                if r == FP_ENROLL_COMPLETE:
+                    logging.debug("enroll complete")
+                if r == FP_ENROLL_FAIL:
+                    print("Failed. Enrollment process reset.")
+                    return None, i
+                if r == FP_ENROLL_PASS:
+                    logging.debug("enroll PASS")
+                    pass
+                if r == FP_ENROLL_RETRY:
+                    logging.debug("enroll RETRY")
+                    pass
+                if r == FP_ENROLL_RETRY_TOO_SHORT:
+                    logging.debug("enroll RETRY_SHORT")
+                    pass
+                if r == FP_ENROLL_RETRY_CENTER_FINGER:
+                    logging.debug("enroll RETRY_CENTER")
+                    pass
+                if r == FP_ENROLL_RETRY_REMOVE_FINGER:
+                    logging.debug("enroll RETRY_REMOVE")
+                    pass
             return (pd, i)
 
     def verify_finger(self):
