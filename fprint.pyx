@@ -1,4 +1,5 @@
 from fprint cimport *
+from cpython cimport PyBytes_FromStringAndSize
 from posix.types cimport suseconds_t, time_t
 from posix.time cimport timeval
 
@@ -48,7 +49,7 @@ cdef class DiscoveredPrints:
         fp_dscv_prints_free(self.prints)
 
     def __getitem__(self, int i):
-        cdef fp_dscv_print *p 
+        cdef fp_dscv_print *p
         if i < self.number_prints:
             p = self.prints[i]
             return DiscoveredPrint.new(p)
@@ -96,9 +97,10 @@ cdef class PrintData:
     @property
     def data(self):
         cdef unsigned char *buf
+        cdef int buf_len
         if self.ptr != NULL:
-            fp_print_data_get_data(self.ptr, &buf)
-            return <bytes> buf
+            buf_len = fp_print_data_get_data(self.ptr, &buf)
+            return PyBytes_FromStringAndSize(<char *>buf, buf_len)
 
     def save(self, fp_finger finger):
         if self.ptr != NULL:
@@ -142,7 +144,7 @@ cdef class Minutia:
 
     @staticmethod
     cdef new(fp_minutia *ptr):
-        m = Minutia() 
+        m = Minutia()
         m.ptr = ptr
         return m
 
@@ -155,52 +157,52 @@ cdef class Minutia:
     def y(self):
         if self.ptr != NULL:
             return self.ptr[0].y
-    
+
     @property
     def ex(self):
         if self.ptr != NULL:
             return self.ptr[0].ex
-    
+
     @property
     def ey(self):
         if self.ptr != NULL:
             return self.ptr[0].ey
-    
+
     @property
     def direction(self):
         if self.ptr != NULL:
             return self.ptr[0].direction
-    
+
     @property
     def reliability(self):
         if self.ptr != NULL:
             return self.ptr[0].reliability
-    
+
     @property
     def type(self):
         if self.ptr != NULL:
             return self.ptr[0].type
-    
+
     @property
     def appearing(self):
         if self.ptr != NULL:
             return self.ptr[0].appearing
-    
+
     @property
     def feature_id(self):
         if self.ptr != NULL:
             return self.ptr[0].feature_id
-    
+
     @property
     def nbrs(self):
         if self.ptr != NULL:
             return self.ptr[0].nbrs[0]
-    
+
     @property
     def ridge_counts(self):
         if self.ptr != NULL:
             return self.ptr[0].ridge_counts[0]
-    
+
     @property
     def num_nbrs(self):
         if self.ptr != NULL:
@@ -239,7 +241,7 @@ cdef class Image:
         cdef bytes py_bytes = path.encode()
         cdef char* c_string = py_bytes
         if self.ptr != NULL:
-            return fp_img_save_to_file(self.ptr, c_string) 
+            return fp_img_save_to_file(self.ptr, c_string)
 
     def standartize(self):
         if self.ptr != NULL:

@@ -1,7 +1,7 @@
 # Requirements
 
 - Cython >= 0.27
-- libfprint == 0.7.1
+- libfprint == 0.7.0
 
 # Install
 
