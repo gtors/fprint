@@ -18,7 +18,7 @@ fprint.init()
 ddevs = fprint.DiscoveredDevices()
 if len(ddevs) > 0:
     ddev = ddevs[0]
-    dev = Device.open(ddev)
+    dev = fprint.Device.open(ddev)
     (print_data, image) = dev.enroll_finger()
     # TODO
 ```
