@@ -1,5 +1,4 @@
 import logging
-
 from fprint cimport *
 from cpython cimport PyBytes_FromStringAndSize
 from posix.types cimport suseconds_t, time_t
@@ -435,12 +434,25 @@ cdef class Device:
                     pass
             return (pd, i)
 
-    def verify_finger(self):
+    def verify_finger(self, PrintData pd):
         if self.ptr != NULL:
-            pd = PrintData()
             i = Image()
-            fp_verify_finger_img(self.ptr, pd.ptr, &i.ptr)
-            return (pd, i)
+            while True:
+                r = fp_verify_finger_img(self.ptr, pd.ptr, &i.ptr)
+                if r < 0:
+                    raise RuntimeError("verify error: %i" % r)
+                if r == FP_VERIFY_NO_MATCH:
+                    return False, i
+                if r == FP_VERIFY_MATCH:
+                    return True, i
+                if r == FP_VERIFY_RETRY:
+                    pass
+                if r == FP_VERIFY_RETRY_TOO_SHORT:
+                    pass
+                if r == FP_VERIFY_RETRY_CENTER_FINGER:
+                    pass
+                if r == FP_VERIFY_RETRY_REMOVE_FINGER:
+                    pass
 
     def identify_finger(self):
         cdef size_t match_offset = 0
