@@ -4,6 +4,7 @@ from cpython cimport PyBytes_FromStringAndSize
 from posix.types cimport suseconds_t, time_t
 from posix.time cimport timeval
 
+
 cdef class Driver:
     cdef fp_driver *ptr
 
@@ -461,6 +462,8 @@ cdef class Device:
             i = Image()
             fp_identify_finger_img(self.ptr, &pd.ptr, &match_offset, &i.ptr)
             return (pd, match_offset, i)
+        else:
+            return (None, None, None)
 
 
 #cdef class Poll:
