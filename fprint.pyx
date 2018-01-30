@@ -9,6 +9,9 @@ from libc.stdlib cimport malloc, free
 cdef class Driver:
     cdef fp_driver *ptr
 
+    def __nonzero__(self):
+        return self.ptr != NULL
+
     @staticmethod
     cdef new(fp_driver *ptr):
         d = Driver()
@@ -68,6 +71,9 @@ cdef class PrintData:
         if self.ptr != NULL:
             fp_print_data_free(self.ptr)
 
+    def __nonzero__(self):
+        return self.ptr != NULL
+
     @staticmethod
     def load(Device d, fp_finger finger):
         pd = PrintData()
@@ -117,6 +123,9 @@ cdef class PrintData:
 cdef class DiscoveredPrint:
     cdef fp_dscv_print *ptr
 
+    def __nonzero__(self):
+        return self.ptr != NULL
+
     @staticmethod
     cdef new(fp_dscv_print *ptr):
         p = DiscoveredPrint()
@@ -144,6 +153,9 @@ cdef class DiscoveredPrint:
 
 cdef class Minutia:
     cdef fp_minutia *ptr
+
+    def __nonzero__(self):
+        return self.ptr != NULL
 
     @staticmethod
     cdef new(fp_minutia *ptr):
@@ -214,6 +226,9 @@ cdef class Minutia:
 
 cdef class Image:
     cdef fp_img *ptr
+
+    def __nonzero__(self):
+        return self.ptr != NULL
 
     @staticmethod
     cdef new(fp_img *ptr):
@@ -310,6 +325,9 @@ cdef class DiscoveredDevices:
 cdef class DiscoverdDevice:
     cdef fp_dscv_dev *ptr
 
+    def __nonzero__(self):
+        return self.ptr != NULL
+
     @staticmethod
     cdef new(fp_dscv_dev *ptr):
         dd = DiscoverdDevice()
@@ -340,6 +358,9 @@ cdef class DiscoverdDevice:
 
 cdef class Device:
     cdef fp_dev *ptr
+
+    def __nonzero__(self):
+        return self.ptr != NULL
 
     @staticmethod
     cdef new(fp_dev *ptr):
