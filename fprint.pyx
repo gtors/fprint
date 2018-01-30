@@ -3,6 +3,7 @@ from fprint cimport *
 from cpython cimport PyBytes_FromStringAndSize
 from posix.types cimport suseconds_t, time_t
 from posix.time cimport timeval
+from libc.stdlib cimport malloc, free
 
 
 cdef class Driver:
@@ -455,15 +456,28 @@ cdef class Device:
                 if r == FP_VERIFY_RETRY_REMOVE_FINGER:
                     pass
 
-    def identify_finger(self):
-        cdef size_t match_offset = 0
-        if self.ptr != NULL:
-            pd = PrintData()
-            i = Image()
-            fp_identify_finger_img(self.ptr, &pd.ptr, &match_offset, &i.ptr)
-            return (pd, match_offset, i)
-        else:
-            return (None, None, None)
+    def identify_finger(self, tuple gallery):
+        if not all(isinstance(item, PrintData) for item in gallery):
+            raise ValueError("gallery param shoud be a tuple of PrintData instances")
+        if not all((<PrintData>item).ptr != NULL for item in gallery):
+            raise ValueError("gallery param contains items with NULL pointer")
+
+        cdef size_t off = 0
+        cdef size_t n = len(gallery) + 1
+        cdef fp_print_data **arr = <fp_print_data **>malloc(n * sizeof(void*))
+
+        arr[n - 1] = NULL
+        for idx, pd in enumerate(gallery):
+            arr[idx] = (<PrintData>pd).ptr
+
+        try:
+            if self.ptr != NULL:
+                i = Image()
+                if fp_identify_finger_img(self.ptr, arr, &off, &i.ptr) == FP_VERIFY_MATCH:
+                    return (gallery[off], i)
+            return (None, None)
+        finally:
+            free(arr)
 
 
 #cdef class Poll:
