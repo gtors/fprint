@@ -355,7 +355,6 @@ cdef class DiscoverdDevice:
         if self.ptr != NULL:
             return <bint> fp_dscv_dev_supports_dscv_print(self.ptr, p.ptr)
 
-
 cdef class Device:
     cdef fp_dev *ptr
 
@@ -456,6 +455,30 @@ cdef class Device:
                     logging.debug("enroll RETRY_REMOVE")
                     pass
             return (pd, i)
+
+    @staticmethod
+    cdef void enroll_stage_callback(fp_dev *dev, int result, fp_print_data *_print, fp_img *img, void *user_data):
+        cdef unsigned char *pd_buf
+        cdef int pd_buf_len
+        pd_buf_len = fp_print_data_get_data(_print, &pd_buf)
+        pd = PrintData.from_data(PyBytes_FromStringAndSize(<char *>pd_buf, pd_buf_len))
+        (<object>user_data)(result, pd)
+
+    @staticmethod
+    cdef void enroll_stop_callback(fp_dev *dev, void *user_data):
+        (<object>user_data)()
+
+    def enroll_start(self, callback):
+        if self.ptr != NULL:
+            r = fp_async_enroll_start(self.ptr, Device.enroll_stage_callback, <void *>callback)
+            if r < 0:
+                raise RuntimeError("Internal I/O error while starting enrollment: %i" % r)
+
+    def enroll_stop(self, callback):
+        if self.ptr != NULL:
+            r = fp_async_enroll_stop(self.ptr, Device.enroll_stop_callback, <void *>callback)
+            if r < 0:
+                raise RuntimeError("Internal I/O error while stopping enrollment: %i" % r)
 
     def verify_finger(self, PrintData pd):
         if self.ptr != NULL:
