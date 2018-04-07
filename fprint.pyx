@@ -458,10 +458,12 @@ cdef class Device:
 
     @staticmethod
     cdef void enroll_stage_callback(fp_dev *dev, int result, fp_print_data *_print, fp_img *img, void *user_data):
-        cdef unsigned char *pd_buf
-        cdef int pd_buf_len
-        pd_buf_len = fp_print_data_get_data(_print, &pd_buf)
-        pd = PrintData.from_data(PyBytes_FromStringAndSize(<char *>pd_buf, pd_buf_len))
+        pd = None
+        if _print != NULL:
+            cdef unsigned char *pd_buf
+            cdef int pd_buf_len
+            pd_buf_len = fp_print_data_get_data(_print, &pd_buf)
+            pd = PrintData.from_data(PyBytes_FromStringAndSize(<char *>pd_buf, pd_buf_len))
         (<object>user_data)(result, pd)
 
     @staticmethod
