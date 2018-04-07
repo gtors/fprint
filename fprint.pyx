@@ -480,6 +480,11 @@ cdef class Device:
             if r < 0:
                 raise RuntimeError("Internal I/O error while stopping enrollment: %i" % r)
 
+    def handle_events(self):
+        r = fp_handle_events()
+        if r < 0:
+            raise RuntimeError("Internal I/O error while handling events: %i" % r)
+
     def verify_finger(self, PrintData pd):
         if self.ptr != NULL:
             i = Image()
