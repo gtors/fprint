@@ -355,7 +355,6 @@ cdef class DiscoverdDevice:
         if self.ptr != NULL:
             return <bint> fp_dscv_dev_supports_dscv_print(self.ptr, p.ptr)
 
-
 cdef class Device:
     cdef fp_dev *ptr
 
@@ -456,6 +455,64 @@ cdef class Device:
                     logging.debug("enroll RETRY_REMOVE")
                     pass
             return (pd, i)
+
+    @staticmethod
+    cdef void enroll_stage_callback(fp_dev *dev, int result, fp_print_data *_print, fp_img *img, void *user_data):
+        cdef unsigned char *pd_buf
+        cdef int pd_buf_len
+        pd = None
+        if _print != NULL:
+            pd_buf_len = fp_print_data_get_data(_print, &pd_buf)
+            pd = PrintData.from_data(PyBytes_FromStringAndSize(<char *>pd_buf, pd_buf_len))
+        (<object>user_data)(result, pd)
+
+    def enroll_start(self, callback):
+        if self.ptr != NULL:
+            r = fp_async_enroll_start(self.ptr, Device.enroll_stage_callback, <void *>callback)
+            if r < 0:
+                raise RuntimeError("Internal I/O error while starting enrollment: %i" % r)
+
+    @staticmethod
+    cdef void enroll_stop_callback(fp_dev *dev, void *user_data):
+        (<object>user_data)()
+
+    def enroll_stop(self, callback):
+        if self.ptr != NULL:
+            r = fp_async_enroll_stop(self.ptr, Device.enroll_stop_callback, <void *>callback)
+            if r < 0:
+                raise RuntimeError("Internal I/O error while stopping enrollment: %i" % r)
+
+    @staticmethod
+    cdef void identify_callback(fp_dev *dev, int result, size_t match_offset, fp_img *img, void *user_data):
+        (<object>user_data)(result, match_offset)
+
+    def identify_start(self, callback, gallery):
+        cdef size_t off
+        cdef size_t n
+        cdef fp_print_data **arr
+
+        if self.ptr != NULL:
+            off = 0
+            n = len(gallery) + 1
+            arr = <fp_print_data **>malloc(n * sizeof(void*))
+            r = fp_async_identify_start(self.ptr, arr, Device.identify_callback, <void *>callback)
+            if r < 0:
+                raise RuntimeError("Internal I/O error while starting identification: %i" % r)
+
+    @staticmethod
+    cdef void identify_stop_callback(fp_dev *dev, void *user_data):
+        (<object>user_data)()
+
+    def identify_stop(self, callback):
+        if self.ptr != NULL:
+            r = fp_async_identify_stop(self.ptr, Device.identify_stop_callback, <void *>callback)
+            if r < 0:
+                raise RuntimeError("Internal I/O error while stopping identification: %i" % r)
+    
+    def handle_events(self):
+        r = fp_handle_events()
+        if r < 0:
+            raise RuntimeError("Internal I/O error while handling events: %i" % r)
 
     def verify_finger(self, PrintData pd):
         if self.ptr != NULL:
