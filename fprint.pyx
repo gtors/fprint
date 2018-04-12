@@ -357,6 +357,7 @@ cdef class DiscoverdDevice:
 
 cdef class Device:
     cdef fp_dev *ptr
+    cdef fp_print_data **identify_gallery
 
     def __nonzero__(self):
         return self.ptr != NULL
@@ -484,18 +485,18 @@ cdef class Device:
 
     @staticmethod
     cdef void identify_callback(fp_dev *dev, int result, size_t match_offset, fp_img *img, void *user_data):
+        free(img)
         (<object>user_data)(result, match_offset)
 
     def identify_start(self, callback, gallery):
-        cdef size_t off
         cdef size_t n
-        cdef fp_print_data **arr
+
+        # TODO: Proper deallocation of self.identify_gallery
+        self._init_identify_gallery_from_tuple(gallery)
 
         if self.ptr != NULL:
-            off = 0
             n = len(gallery) + 1
-            arr = <fp_print_data **>malloc(n * sizeof(void*))
-            r = fp_async_identify_start(self.ptr, arr, Device.identify_callback, <void *>callback)
+            r = fp_async_identify_start(self.ptr, self.identify_gallery, Device.identify_callback, <void *>callback)
             if r < 0:
                 raise RuntimeError("Internal I/O error while starting identification: %i" % r)
 
@@ -508,7 +509,7 @@ cdef class Device:
             r = fp_async_identify_stop(self.ptr, Device.identify_stop_callback, <void *>callback)
             if r < 0:
                 raise RuntimeError("Internal I/O error while stopping identification: %i" % r)
-    
+
     def handle_events(self):
         r = fp_handle_events()
         if r < 0:
@@ -534,13 +535,12 @@ cdef class Device:
                 if r == FP_VERIFY_RETRY_REMOVE_FINGER:
                     pass
 
-    def identify_finger(self, tuple gallery):
+    cdef _init_identify_gallery_from_tuple(self, tuple gallery):
         if not all(isinstance(item, PrintData) for item in gallery):
             raise ValueError("gallery param shoud be a tuple of PrintData instances")
         if not all((<PrintData>item).ptr != NULL for item in gallery):
             raise ValueError("gallery param contains items with NULL pointer")
 
-        cdef size_t off = 0
         cdef size_t n = len(gallery) + 1
         cdef fp_print_data **arr = <fp_print_data **>malloc(n * sizeof(void*))
 
@@ -548,14 +548,25 @@ cdef class Device:
         for idx, pd in enumerate(gallery):
             arr[idx] = (<PrintData>pd).ptr
 
+        self._dealloc_identify_gallery()
+        self.identify_gallery = arr
+
+    def _dealloc_identify_gallery(self):
+        if self.identify_gallery != NULL:
+            free(self.identify_gallery)
+            self.identify_gallery = NULL
+
+    def identify_finger(self, tuple gallery):
+        cdef size_t off = 0
+        self._init_identify_gallery_from_tuple(gallery)
         try:
             if self.ptr != NULL:
                 i = Image()
-                if fp_identify_finger_img(self.ptr, arr, &off, &i.ptr) == FP_VERIFY_MATCH:
+                if fp_identify_finger_img(self.ptr, self.identify_gallery, &off, &i.ptr) == FP_VERIFY_MATCH:
                     return (gallery[off], i)
             return (None, None)
         finally:
-            free(arr)
+            self._dealloc_identify_gallery()
 
 
 #cdef class Poll:
