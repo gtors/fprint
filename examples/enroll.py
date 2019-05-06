@@ -13,13 +13,11 @@ ddevs = fprint.DiscoveredDevices()
 if len(ddevs) > 0:
     
     # Choose the first one
-    # ddev: fprint.DiscoveredDevice
-    ddev = ddevs[0]
     # dev: fprint.Device
-    dev = fprint.Device.open(ddev)
+    dev = ddevs[0].open_device()
 
     # print_data: Optional[fprint.PrintData]
-    print_data = dev.enroll_finger()[0]
+    print_data = dev.enroll_finger_loop()
 
     if print_data is None:
         print("Fail")

@@ -6,6 +6,9 @@ from posix.time cimport timeval
 from libc.stdlib cimport malloc, free
 
 
+log = logging.Logger(__name__)
+
+
 cdef class Driver:
     cdef fp_driver *ptr
 
@@ -38,30 +41,10 @@ cdef class Driver:
         if self.ptr != NULL:
             return fp_driver_get_scan_type(self.ptr)
 
-
-cdef class DiscoveredPrints:
-    cdef fp_dscv_print **prints
-    cdef int number_prints
-
-    def __cinit__(self):
-        self.prints = fp_discover_prints()
-
-        cdef int i = 0
-        while self.prints[i] != NULL:
-            i += 1
-        self.number_prints = i
-
-    def __dealloc__(self):
-        fp_dscv_prints_free(self.prints)
-
-    def __getitem__(self, int i):
-        cdef fp_dscv_print *p
-        if i < self.number_prints:
-            p = self.prints[i]
-            return DiscoveredPrint.new(p)
-
-    def __len__(self):
-        return self.number_prints
+    @property
+    def supports_imaging(self):
+        if self.ptr != NULL:
+            return <bint> fp_driver_supports_imaging(self.ptr)
 
 
 cdef class PrintData:
@@ -78,12 +61,6 @@ cdef class PrintData:
     def load(Device d, fp_finger finger):
         pd = PrintData()
         if fp_print_data_load(d.ptr, finger, &pd.ptr) > 0:
-            return pd
-
-    @staticmethod
-    def from_discovered_print(DiscoveredPrint p):
-        pd = PrintData()
-        if fp_print_data_from_dscv_print(p.ptr, &pd.ptr) > 0:
             return pd
 
     @staticmethod
@@ -120,37 +97,6 @@ cdef class PrintData:
             return fp_print_data_delete(d.ptr, finger)
 
 
-cdef class DiscoveredPrint:
-    cdef fp_dscv_print *ptr
-
-    def __nonzero__(self):
-        return self.ptr != NULL
-
-    @staticmethod
-    cdef new(fp_dscv_print *ptr):
-        p = DiscoveredPrint()
-        p.ptr = ptr
-        return p
-
-    @property
-    def driver_id(self):
-        if self.ptr != NULL:
-            return fp_dscv_print_get_driver_id(self.ptr)
-
-    @property
-    def devtype(self):
-        if self.ptr != NULL:
-            return fp_dscv_print_get_devtype(self.ptr)
-
-    def get_finger(self):
-        if self.ptr != NULL:
-            return fp_dscv_print_get_finger(self.ptr)
-
-    def delete(self):
-        if self.ptr != NULL:
-            return fp_dscv_print_delete(self.ptr)
-
-
 cdef class Minutia:
     cdef fp_minutia *ptr
 
@@ -164,64 +110,14 @@ cdef class Minutia:
         return m
 
     @property
-    def x(self):
+    def coords(self):
+        cdef int x
+        cdef int y
         if self.ptr != NULL:
-            return self.ptr[0].x
-
-    @property
-    def y(self):
-        if self.ptr != NULL:
-            return self.ptr[0].y
-
-    @property
-    def ex(self):
-        if self.ptr != NULL:
-            return self.ptr[0].ex
-
-    @property
-    def ey(self):
-        if self.ptr != NULL:
-            return self.ptr[0].ey
-
-    @property
-    def direction(self):
-        if self.ptr != NULL:
-            return self.ptr[0].direction
-
-    @property
-    def reliability(self):
-        if self.ptr != NULL:
-            return self.ptr[0].reliability
-
-    @property
-    def type(self):
-        if self.ptr != NULL:
-            return self.ptr[0].type
-
-    @property
-    def appearing(self):
-        if self.ptr != NULL:
-            return self.ptr[0].appearing
-
-    @property
-    def feature_id(self):
-        if self.ptr != NULL:
-            return self.ptr[0].feature_id
-
-    @property
-    def nbrs(self):
-        if self.ptr != NULL:
-            return self.ptr[0].nbrs[0]
-
-    @property
-    def ridge_counts(self):
-        if self.ptr != NULL:
-            return self.ptr[0].ridge_counts[0]
-
-    @property
-    def num_nbrs(self):
-        if self.ptr != NULL:
-            return self.ptr[0].num_nbrs
+            result = fp_minutia_get_coords(self.ptr, &x, &y)
+            if result == 0:
+                return (x, y)
+        return (None, None)
 
 
 cdef class Image:
@@ -255,6 +151,15 @@ cdef class Image:
         if self.ptr != NULL:
             return <bytes> fp_img_get_data(self.ptr)
 
+    @property
+    def minutiae(self):
+        cdef int nr_minutiae = 0
+        cdef fp_minutia **minutiae
+        if self.ptr != NULL:
+            minutiae = fp_img_get_minutiae(self.ptr, &nr_minutiae)
+            if minutiae != NULL:
+                return tuple(Minutia.new(minutiae[i]) for i in xrange(nr_minutiae))
+
     def save_to_file(self, str path):
         cdef bytes py_bytes = path.encode()
         cdef char* c_string = py_bytes
@@ -272,14 +177,6 @@ cdef class Image:
             if img != NULL:
                 return Image.new(img)
 
-    def get_minutiae(self):
-        cdef int nr_minutiae = 0
-        cdef fp_minutia **minutiae
-        if self.ptr != NULL:
-            minutiae = fp_img_get_minutiae(self.ptr, &nr_minutiae)
-            if minutiae != NULL:
-                return tuple(Minutia.new(minutiae[i]) for i in xrange(nr_minutiae))
-
 
 cdef class DiscoveredDevices:
     cdef fp_dscv_dev **devices
@@ -287,7 +184,6 @@ cdef class DiscoveredDevices:
 
     def __cinit__(self):
         self.devices = fp_discover_devs()
-
         cdef int i = 0
         while self.devices[i] != NULL:
             i += 1
@@ -302,24 +198,10 @@ cdef class DiscoveredDevices:
             dd = self.devices[i]
             return DiscoverdDevice.new(dd)
         else:
-            return None
+            raise IndexError()
 
     def __len__(self):
         return self.number_devices
-
-    def dev_for_print_data(self, PrintData p):
-        cdef fp_dscv_dev *dev = fp_dscv_dev_for_print_data(self.devices, p.ptr)
-        if dev == NULL:
-            return None
-        else:
-            return DiscoverdDevice.new(dev)
-
-    def dev_for_dscv_print(self, DiscoveredPrint p):
-        cdef fp_dscv_dev *dev = fp_dscv_dev_for_dscv_print(self.devices, p.ptr)
-        if dev == NULL:
-            return None
-        else:
-            return DiscoverdDevice.new(dev)
 
 
 cdef class DiscoverdDevice:
@@ -333,6 +215,15 @@ cdef class DiscoverdDevice:
         dd = DiscoverdDevice()
         dd.ptr = ptr
         return dd
+
+    @staticmethod
+    def discover():
+        return DiscoveredDevices()
+
+    @property
+    def driver_id(self):
+        if self.ptr != NULL:
+            return fp_dscv_dev_get_driver_id(self.ptr)
 
     @property
     def driver(self):
@@ -351,9 +242,8 @@ cdef class DiscoverdDevice:
         if self.ptr != NULL:
             return <bint> fp_dscv_dev_supports_print_data(self.ptr, pd.ptr)
 
-    def supports_dscv_print(self, DiscoveredPrint p):
-        if self.ptr != NULL:
-            return <bint> fp_dscv_dev_supports_dscv_print(self.ptr, p.ptr)
+    def open_device(self):
+       return Device.open(self)
 
 
 cdef class Device:
@@ -373,6 +263,8 @@ cdef class Device:
         cdef fp_dev *dev = fp_dev_open(dd.ptr)
         if dev != NULL:
             return Device.new(dev)
+        else:
+            raise RuntimeError("Cannot open device")
 
     def close(self):
         if self.ptr != NULL:
@@ -400,10 +292,6 @@ cdef class Device:
         if self.ptr != NULL:
             return <bint> fp_dev_supports_print_data(self.ptr, pd.ptr)
 
-    def supports_dscv_print(self, DiscoveredPrint p):
-        if self.ptr != NULL:
-            return <bint> fp_dev_supports_dscv_print(self.ptr, p.ptr)
-
     def supports_imaging(self):
         if self.ptr != NULL:
             return <bint> fp_dev_supports_imaging(self.ptr)
@@ -426,48 +314,59 @@ cdef class Device:
         if self.ptr != NULL:
             return fp_dev_get_img_height(self.ptr)
 
-    def enroll_finger(self):
+    def enroll_finger_loop(self):
         if self.ptr != NULL:
             pd = PrintData()
-            i = Image()
             r = FP_ENROLL_RETRY
             while r != FP_ENROLL_COMPLETE:
-                r = fp_enroll_finger_img(self.ptr, &pd.ptr, &i.ptr)
+                r = fp_enroll_finger(self.ptr, &pd.ptr)
                 if r < 0:
                     raise RuntimeError("Internal I/O error while enrolling: %i" % r)
                 if r == FP_ENROLL_COMPLETE:
-                    logging.debug("enroll complete")
+                    log.debug("enroll complete")
                 if r == FP_ENROLL_FAIL:
                     print("Failed. Enrollment process reset.")
-                    return None, i
+                    return None
                 if r == FP_ENROLL_PASS:
-                    logging.debug("enroll PASS")
+                    log.debug("enroll PASS")
                     pass
                 if r == FP_ENROLL_RETRY:
-                    logging.debug("enroll RETRY")
+                    log.debug("enroll RETRY")
                     pass
                 if r == FP_ENROLL_RETRY_TOO_SHORT:
-                    logging.debug("enroll RETRY_SHORT")
+                    log.debug("enroll RETRY_SHORT")
                     pass
                 if r == FP_ENROLL_RETRY_CENTER_FINGER:
-                    logging.debug("enroll RETRY_CENTER")
+                    log.debug("enroll RETRY_CENTER")
                     pass
                 if r == FP_ENROLL_RETRY_REMOVE_FINGER:
-                    logging.debug("enroll RETRY_REMOVE")
+                    log.debug("enroll RETRY_REMOVE")
                     pass
-            return (pd, i)
+            return pd
 
-    def verify_finger(self, PrintData pd):
+    def enrol_finger_img(self):
         if self.ptr != NULL:
-            i = Image()
+            img = Image()
+            pd = PrintData()
+            result = fp_enroll_finger_img(self.ptr, &pd.ptr, &img.ptr)
+            return (result, pd, img)
+
+    def enrol_finger(self):
+        if self.ptr != NULL:
+            pd = PrintData()
+            result = fp_enroll_finger(self.ptr, &pd.ptr)
+            return (result, pd)
+
+    def verify_finger_loop(self, PrintData pd):
+        if self.ptr != NULL:
             while True:
-                r = fp_verify_finger_img(self.ptr, pd.ptr, &i.ptr)
+                r = fp_verify_finger(self.ptr, pd.ptr)
                 if r < 0:
                     raise RuntimeError("verify error: %i" % r)
                 if r == FP_VERIFY_NO_MATCH:
-                    return False, i
+                    return False
                 if r == FP_VERIFY_MATCH:
-                    return True, i
+                    return True
                 if r == FP_VERIFY_RETRY:
                     pass
                 if r == FP_VERIFY_RETRY_TOO_SHORT:
@@ -477,7 +376,20 @@ cdef class Device:
                 if r == FP_VERIFY_RETRY_REMOVE_FINGER:
                     pass
 
-    def identify_finger(self, tuple gallery):
+    def verify_finger_img(self, PrintData pd):
+        if self.ptr != NULL:
+            img = Image()
+            pd = PrintData()
+            result = fp_verify_finger_img(self.ptr, pd.ptr, &img.ptr)
+            return result, img
+
+    def verify_finger(self, PrintData pd):
+        if self.ptr != NULL:
+            pd = PrintData()
+            result = fp_verify_finger(self.ptr, pd.ptr)
+            return result
+
+    def identify_finger_img(self, tuple gallery):
         if not all(isinstance(item, PrintData) for item in gallery):
             raise ValueError("gallery param shoud be a tuple of PrintData instances")
         if not all((<PrintData>item).ptr != NULL for item in gallery):
@@ -500,30 +412,33 @@ cdef class Device:
         finally:
             free(arr)
 
+    def identify_finger(self, tuple gallery):
+        if not all(isinstance(item, PrintData) for item in gallery):
+            raise ValueError("gallery param shoud be a tuple of PrintData instances")
+        if not all((<PrintData>item).ptr != NULL for item in gallery):
+            raise ValueError("gallery param contains items with NULL pointer")
 
-#cdef class Poll:
-#    cdef fp_pollfd *ptr
-#
-#
-#def handle_events_timeout(time_t sec, suseconds_t usec):
-#    cdef timeval tv = timeval(sec=sec, usec=usec)
-#    return fp_handle_events_timeout(&tv)
-#
-#def handle_events():
-#    fp_handle_events()
-#
-#def get_next_timeout():
-#    cdef timeval tv
-#    ret = fp_get_next_timeout(&tv)
-#    return (tv, ret)
-#
-#
+        cdef size_t off = 0
+        cdef size_t n = len(gallery) + 1
+        cdef fp_print_data **arr = <fp_print_data **>malloc(n * sizeof(void*))
+
+        arr[n - 1] = NULL
+        for idx, pd in enumerate(gallery):
+            arr[idx] = (<PrintData>pd).ptr
+
+        try:
+            if self.ptr != NULL:
+                if fp_identify_finger(self.ptr, arr, &off) == FP_VERIFY_MATCH:
+                    return gallery[off]
+            return None
+        finally:
+            free(arr)
+
+
 def init():
     if fp_init() < 0:
         raise RuntimeError("Failed to init libfprint")
 
+
 def exit():
     fp_exit()
-
-def set_debug(int level):
-    fp_set_debug(level)

@@ -18,16 +18,13 @@ with open('some_fingerprint', 'rb') as fh:
 ddevs = fprint.DiscoveredDevices()
 if len(ddevs) > 0:
     # Choose the first one
-    # ddev: fprint.DiscoveredDevice
-    ddev = ddevs[0]
-
     # dev: fprint.Device
-    dev = fprint.Device.open(ddev)
+    dev = ddevs[0].open_device()
 
     # Start fingerprint verification. In that moment you should 
     # place your finger on the device.
     # matched: bool 
-    matched = dev.verify_finger(fingerprint)[0]
+    matched = dev.verify_finger_loop(fingerprint)
 
     if matched:
         print("Hooray!")

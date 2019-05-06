@@ -37,34 +37,28 @@ cdef extern from "libfprint/fprint.h":
         FP_SCAN_TYPE_PRESS = 0
         FP_SCAN_TYPE_SWIPE
 
+    # Drivers
     const char *fp_driver_get_name(fp_driver *drv)
     const char *fp_driver_get_full_name(fp_driver *drv)
     uint16_t fp_driver_get_driver_id(fp_driver *drv)
     fp_scan_type fp_driver_get_scan_type(fp_driver *drv)
+    int fp_driver_supports_imaging(fp_driver *drv)
 
+    # Device discovery
     fp_dscv_dev **fp_discover_devs()
     void fp_dscv_devs_free(fp_dscv_dev **devs)
     fp_driver *fp_dscv_dev_get_driver(fp_dscv_dev *dev)
+    uint16_t fp_dscv_dev_get_driver_id(fp_dscv_dev *dev)
     uint32_t fp_dscv_dev_get_devtype(fp_dscv_dev *dev)
     int fp_dscv_dev_supports_print_data(fp_dscv_dev *dev, fp_print_data *_print)
-    int fp_dscv_dev_supports_dscv_print(fp_dscv_dev *dev, fp_dscv_print *_print)
-    fp_dscv_dev *fp_dscv_dev_for_print_data(fp_dscv_dev **devs, fp_print_data *_print)
-    fp_dscv_dev *fp_dscv_dev_for_dscv_print(fp_dscv_dev **devs, fp_dscv_print *_print)
 
-    fp_dscv_print **fp_discover_prints()
-    void fp_dscv_prints_free(fp_dscv_print **_prints)
-    uint16_t fp_dscv_print_get_driver_id(fp_dscv_print *_print)
-    uint32_t fp_dscv_print_get_devtype(fp_dscv_print *_print)
-    fp_finger fp_dscv_print_get_finger(fp_dscv_print *_print)
-    int fp_dscv_print_delete(fp_dscv_print *_print)
-
+    # Device handling
     fp_dev *fp_dev_open(fp_dscv_dev *ddev)
     void fp_dev_close(fp_dev *dev)
     fp_driver *fp_dev_get_driver(fp_dev *dev)
     int fp_dev_get_nr_enroll_stages(fp_dev *dev)
     uint32_t fp_dev_get_devtype(fp_dev *dev)
     int fp_dev_supports_print_data(fp_dev *dev, fp_print_data *data)
-    int fp_dev_supports_dscv_print(fp_dev *dev, fp_dscv_print *_print)
 
     cpdef enum fp_capture_result:
         FP_CAPTURE_COMPLETE = 0
@@ -85,6 +79,7 @@ cdef extern from "libfprint/fprint.h":
         FP_ENROLL_RETRY_REMOVE_FINGER
 
     int fp_enroll_finger_img(fp_dev *dev, fp_print_data **_print_data, fp_img **img)
+    int fp_enroll_finger(fp_dev *dev, fp_print_data **_print_data)
 
     cpdef enum fp_verify_result:
         FP_VERIFY_NO_MATCH = 0
@@ -95,12 +90,14 @@ cdef extern from "libfprint/fprint.h":
         FP_VERIFY_RETRY_REMOVE_FINGER = fp_enroll_result.FP_ENROLL_RETRY_REMOVE_FINGER
 
     int fp_verify_finger_img(fp_dev *dev, fp_print_data *enrolled_print, fp_img **img)
+    int fp_verify_finger(fp_dev *dev, fp_print_data *enrolled_print)
 
     int fp_dev_supports_identification(fp_dev *dev)
     int fp_identify_finger_img(fp_dev *dev, fp_print_data **_print_gallery, size_t *match_offset, fp_img **img)
+    int fp_identify_finger(fp_dev *dev, fp_print_data **_print_gallery, size_t *match_offset)
 
+    # Data handling
     int fp_print_data_load(fp_dev *dev, fp_finger finger, fp_print_data **data)
-    int fp_print_data_from_dscv_print(fp_dscv_print *_print, fp_print_data **data)
     int fp_print_data_save(fp_print_data *data, fp_finger finger)
     int fp_print_data_delete(fp_dev *dev, fp_finger finger)
     void fp_print_data_free(fp_print_data *data)
@@ -109,19 +106,9 @@ cdef extern from "libfprint/fprint.h":
     uint16_t fp_print_data_get_driver_id(fp_print_data *data)
     uint32_t fp_print_data_get_devtype(fp_print_data *data)
 
+    # Image handling
     struct fp_minutia:
-        int x
-        int y
-        int ex
-        int ey
-        int direction
-        double reliability
-        int type
-        int appearing
-        int feature_id
-        int *nbrs
-        int *ridge_counts
-        int num_nbrs
+        pass
 
     int fp_img_get_height(fp_img *img)
     int fp_img_get_width(fp_img *img)
@@ -130,8 +117,10 @@ cdef extern from "libfprint/fprint.h":
     void fp_img_standardize(fp_img *img)
     fp_img *fp_img_binarize(fp_img *img)
     fp_minutia **fp_img_get_minutiae(fp_img *img, int *nr_minutiae)
+    int fp_minutia_get_coords(fp_minutia *minutia, int *x, int *y)
     void fp_img_free(fp_img *img)
 
+    # Polling and timing
     struct fp_pollfd:
         int fd
         short events
@@ -145,36 +134,28 @@ cdef extern from "libfprint/fprint.h":
     ctypedef void (*fp_pollfd_removed_cb)(int fd)
     void fp_set_pollfd_notifiers(fp_pollfd_added_cb added_cb, fp_pollfd_removed_cb removed_cb)
 
+    # Library
     int fp_init()
     void fp_exit()
-    void fp_set_debug(int level)
+
+    # Asynchronous I/O
+
+    ctypedef void (*fp_operation_stop_cb)(fp_dev *dev, void *user_data)
+    ctypedef void (*fp_img_operation_cb)(fp_dev *dev, int result, fp_img *img, void *user_data)
 
     ctypedef void (*fp_dev_open_cb)(fp_dev *dev, int status, void *user_data)
     int fp_async_dev_open(fp_dscv_dev *ddev, fp_dev_open_cb callback, void *user_data)
-
-    ctypedef void (*fp_dev_close_cb)(fp_dev *dev, void *user_data)
-    void fp_async_dev_close(fp_dev *dev, fp_dev_close_cb callback, void *user_data)
+    void fp_async_dev_close(fp_dev *dev, fp_operation_stop_cb callback, void *user_data)
 
     ctypedef void (*fp_enroll_stage_cb)(fp_dev *dev, int result, fp_print_data *_print, fp_img *img, void *user_data)
     int fp_async_enroll_start(fp_dev *dev, fp_enroll_stage_cb callback, void *user_data)
-
-    ctypedef void (*fp_enroll_stop_cb)(fp_dev *dev, void *user_data)
-    int fp_async_enroll_stop(fp_dev *dev, fp_enroll_stop_cb callback, void *user_data)
-
-    ctypedef void (*fp_verify_cb)(fp_dev *dev, int result, fp_img *img, void *user_data)
-    int fp_async_verify_start(fp_dev *dev, fp_print_data *data, fp_verify_cb callback, void *user_data)
-
-    ctypedef void (*fp_verify_stop_cb)(fp_dev *dev, void *user_data)
-    int fp_async_verify_stop(fp_dev *dev, fp_verify_stop_cb callback, void *user_data)
+    int fp_async_enroll_stop(fp_dev *dev, fp_operation_stop_cb callback, void *user_data)
+    int fp_async_verify_start(fp_dev *dev, fp_print_data *data, fp_img_operation_cb callback, void *user_data)
+    int fp_async_verify_stop(fp_dev *dev, fp_img_operation_cb callback, void *user_data)
 
     ctypedef void (*fp_identify_cb)(fp_dev *dev, int result, size_t match_offset, fp_img *img, void *user_data)
     int fp_async_identify_start(fp_dev *dev, fp_print_data **gallery, fp_identify_cb callback, void *user_data)
+    int fp_async_identify_stop(fp_dev *dev, fp_operation_stop_cb callback, void *user_data)
 
-    ctypedef void (*fp_identify_stop_cb)(fp_dev *dev, void *user_data)
-    int fp_async_identify_stop(fp_dev *dev, fp_identify_stop_cb callback, void *user_data)
-
-    ctypedef void (*fp_capture_cb)(fp_dev *dev, int result, fp_img *img, void *user_data)
-    int fp_async_capture_start(fp_dev *dev, int unconditional, fp_capture_cb callback, void *user_data)
-
-    ctypedef void (*fp_capture_stop_cb)(fp_dev *dev, void *user_data)
-    int fp_async_capture_stop(fp_dev *dev, fp_capture_stop_cb callback, void *user_data)
+    int fp_async_capture_start(fp_dev *dev, int unconditional, fp_img_operation_cb callback, void *user_data)
+    int fp_async_capture_stop(fp_dev *dev, fp_operation_stop_cb callback, void *user_data)
