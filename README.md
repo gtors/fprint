@@ -6,7 +6,7 @@
 # Install
 
 ```
-pip install git+https://github.com/gtors/fprint#egg=fprint-0.2
+pip install fprintw
 ```
 
 # Usage

@@ -4,3 +4,4 @@ build
 dist
 .*
 !.gitignore
+*.egg-info
