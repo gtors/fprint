@@ -3,6 +3,7 @@ import logging
 import asyncio
 import asyncio_glib
 from lib.fprint cimport *
+from libc.stdint cimport uintptr_t
 from cpython cimport PyBytes_FromStringAndSize
 from posix.types cimport suseconds_t, time_t
 from posix.time cimport timeval
@@ -228,9 +229,10 @@ cdef class Devices:
 
     def __getitem__(self, guint i):
         cdef FpDevice *dev
+        cdef GPtrArray arr
 
         if self.ptr != NULL and i < self.ptr.len:
-            dev = <FpDevice *> g_ptr_array_index(self.ptr[0], i)
+            dev = <FpDevice *> self.ptr.pdata[i]
             return Device.new(dev)
         else:
             raise IndexError("Device with '{}' index does not exists".format(i))
@@ -257,7 +259,7 @@ cdef class Device:
         return self.ptr != NULL
 
     def __repr__(self):
-        return "Device<ptr={}>".format(<int>self.ptr)
+        return "Device<ptr={}>".format(<uintptr_t>self.ptr)
 
     def __str__(self):
         return "Device<id={} name={} driver={}>".format(

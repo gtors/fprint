@@ -72,19 +72,19 @@ cdef extern from "glib-2.0/glib.h":
 
 cdef extern from "libfprint-2/fprint.h":
 
-    struct FpDevice:
+    ctypedef struct FpDevice:
         pass
     
-    struct FpContext:
+    ctypedef struct FpContext:
         pass
 
-    struct FpPrint:
+    ctypedef struct FpPrint:
         pass
 
-    struct FpImageDevice:
+    ctypedef struct FpImageDevice:
         pass
 
-    struct FpImage:
+    ctypedef struct FpImage:
         pass
 
     ctypedef void FpMinutia
@@ -95,7 +95,7 @@ cdef extern from "libfprint-2/fprint.h":
         # The device is a USB device
         FP_DEVICE_TYPE_USB
 
-    cpdef enum FpDeviceRetry:
+    ctypedef enum FpDeviceRetry:
         # Error codes representing scan failures resulting in the user needing to
         # retry.
 
@@ -117,7 +117,7 @@ cdef extern from "libfprint-2/fprint.h":
         # retrying.
         FP_DEVICE_RETRY_REMOVE_FINGER
 
-    cpdef enum FpDeviceError:
+    ctypedef enum FpDeviceError:
         # Error codes for device operations. More specific errors from other domains
         # such as #G_IO_ERROR or #G_USB_DEVICE_ERROR may also be reported.
 
@@ -140,13 +140,13 @@ cdef extern from "libfprint-2/fprint.h":
         # No space on device available for operation
         FP_DEVICE_ERROR_DATA_FULL
 
-    cpdef enum FpScanType:
+    ctypedef enum FpScanType:
         # Sensor requires swiping the finger.
         FP_SCAN_TYPE_SWIPE = 0
         # Sensor requires placing/pressing down the finger.
         FP_SCAN_TYPE_PRESS
 
-    cpdef enum FpFinger:
+    ctypedef enum FpFinger:
         # The finger is unknown
         FP_FINGER_UNKNOWN
         # Left thumb

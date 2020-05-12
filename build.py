@@ -9,7 +9,7 @@ def build(setup_kwargs):
                 Extension(
                     "fprint", 
                     sources=["lib/fprint.pyx"], 
-                    libraries=["fprint", "glib"],
+                    libraries=["fprint-2", "glib-2.0"],
                     include_dirs=["/usr/include/glib-2.0", "/usr/lib/glib-2.0/include", "/usr/include/libfprint-2"]
                 ),
             ]),
