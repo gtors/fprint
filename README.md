@@ -1,7 +1,13 @@
+# Fprintw
+
+Python wrapper for libfrprint
+
 # Requirements
 
+- Python >= 3.8
 - Cython >= 0.27
-- libfprint == 0.99.0
+- Libfprint >= 1.90
+- Glibc >= 2.0
 
 # Install
 
@@ -9,19 +15,42 @@
 pip install fprintw
 ```
 
-# Usage
+# Usage example
 
 ```python
 import fprint
+import asyncio
 
-fprint.init()
-devices = fprint.DiscoveredDevices()
 
-if len(devices) > 0:
-    dev = devices[0].open_device()
-    print_data = dev.enroll_finger_loop()
-    print_data = fprint.PrintData.from_data(print_data.data)
-    result = dev.verify_finger_loop(print_data)
-    assert result is True
-    dev.close()
+# NOTE: asyncio will use GMainLoop (glib) as event loop
+ctx = fprint.init_context()
+
+
+async def main():
+
+    # Open first available fingerprint device
+    if not (dev := await ctx.open_first_device())
+        print("No devices found")
+        return
+
+    # Enroll finger and create fingerprint
+    fingerprint = await dev.enroll()
+
+    # Checking the fingerprints created above
+    if await dev.verify(fingerprint):
+        print("OK")
+    else:
+        print("You shall not pass!") 
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
+
 ```
+
+More examples:
+
+- enroll
+- verify
+- identify
+- load/store fingerprints in sqlite

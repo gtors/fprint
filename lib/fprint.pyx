@@ -2,7 +2,7 @@
 import logging
 import asyncio
 import asyncio_glib
-from fprint cimport *
+from lib.fprint cimport *
 from cpython cimport PyBytes_FromStringAndSize
 from posix.types cimport suseconds_t, time_t
 from posix.time cimport timeval

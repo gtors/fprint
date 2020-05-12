@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "fprintw"
+version = "2.0.0"
+description = "Python wrapper for libfprint"
+authors = [
+    "Andrey Torsunov <andrey.torsunov@gmail.com>"
+]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/gtors/"
+repository = "https://github.com/gtors/fprint"
+# documentation = ""
+keywords = ["fprint"]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+build = "build.py"
+packages = [
+    {include = "lib"},
+]
+
+# Requirements
+[tool.poetry.dependencies]
+python = "^3.8"
+asyncio-glib="^0.1"
+
+[tool.poetry.dev-dependencies]
+cython = "^0.29"
+
+[build-system]
+requires = ["poetry>=0.12", 'Cython', 'setuptools']
+build-backend = "poetry.masonry.api"
