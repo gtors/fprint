@@ -1,161 +1,458 @@
+# cython: language_level=3
+
 from posix.time cimport timeval
 from libc.stdint cimport uint32_t, uint16_t
 
-cdef extern from "libfprint/fprint.h":
 
-    struct fp_dscv_dev:
+cdef extern from "glib-2.0/glib.h":
+    ctypedef void *gpointer
+    ctypedef void *gconstpointer
+    ctypedef int gint
+    ctypedef unsigned int guint
+    ctypedef unsigned long gulong
+    ctypedef signed long long gint64
+    ctypedef unsigned long long guint64
+    ctypedef gint gboolean
+    ctypedef double gdouble
+
+    ctypedef unsigned int gsize
+    ctypedef signed int gssize
+    ctypedef char gchar
+    ctypedef unsigned char guchar
+    ctypedef int GQuark
+
+
+    ctypedef struct GObject:
         pass
 
-    struct fp_dscv_print:
+    ctypedef struct GMainContext:
         pass
 
-    struct fp_dev:
+    ctypedef struct GSList:
+        gpointer data
+        GSList *next
+
+    ctypedef struct GList:
+        gpointer data
+        GList *next
+        GList *prev
+
+    ctypedef struct GPtrArray:
+        gpointer *pdata
+        guint len
+
+    ctypedef struct GError:
+        GQuark domain
+        gint code
+        gchar *message
+
+
+    ctypedef struct GCancellable:
         pass
 
-    struct fp_driver:
+    ctypedef struct GDate:
         pass
 
-    struct fp_print_data:
+    ctypedef struct GType:
         pass
 
-    struct fp_img:
+    ctypedef struct GAsyncResult:
         pass
 
-    cpdef enum fp_finger:
-        LEFT_THUMB = 1
-        LEFT_INDEX 
-        LEFT_MIDDLE
-        LEFT_RING
-        LEFT_LITTLE
-        RIGHT_THUMB
-        RIGHT_INDEX
-        RIGHT_MIDDLE
-        RIGHT_RING
-        RIGHT_LITTLE
+    gpointer g_ptr_array_index(GPtrArray, gint)
 
-    cpdef enum fp_scan_type:
-        FP_SCAN_TYPE_PRESS = 0
-        FP_SCAN_TYPE_SWIPE
+    ctypedef void (*GCallback) ()
+    ctypedef void (*GDestroyNotify) (gpointer)
+    ctypedef gboolean (*GSourceFunc) (gpointer data)
+    ctypedef void (*GAsyncReadyCallback) (
+        GObject *source_object,
+        GAsyncResult *res,
+        gpointer user_data)
 
-    # Drivers
-    const char *fp_driver_get_name(fp_driver *drv)
-    const char *fp_driver_get_full_name(fp_driver *drv)
-    uint16_t fp_driver_get_driver_id(fp_driver *drv)
-    fp_scan_type fp_driver_get_scan_type(fp_driver *drv)
-    int fp_driver_supports_imaging(fp_driver *drv)
 
-    # Device discovery
-    fp_dscv_dev **fp_discover_devs()
-    void fp_dscv_devs_free(fp_dscv_dev **devs)
-    fp_driver *fp_dscv_dev_get_driver(fp_dscv_dev *dev)
-    uint16_t fp_dscv_dev_get_driver_id(fp_dscv_dev *dev)
-    uint32_t fp_dscv_dev_get_devtype(fp_dscv_dev *dev)
-    int fp_dscv_dev_supports_print_data(fp_dscv_dev *dev, fp_print_data *_print)
+cdef extern from "libfprint-2/fprint.h":
 
-    # Device handling
-    fp_dev *fp_dev_open(fp_dscv_dev *ddev)
-    void fp_dev_close(fp_dev *dev)
-    fp_driver *fp_dev_get_driver(fp_dev *dev)
-    int fp_dev_get_nr_enroll_stages(fp_dev *dev)
-    uint32_t fp_dev_get_devtype(fp_dev *dev)
-    int fp_dev_supports_print_data(fp_dev *dev, fp_print_data *data)
-
-    cpdef enum fp_capture_result:
-        FP_CAPTURE_COMPLETE = 0
-        FP_CAPTURE_FAIL
-
-    int fp_dev_supports_imaging(fp_dev *dev)
-    int fp_dev_img_capture(fp_dev *dev, int unconditional, fp_img **image)
-    int fp_dev_get_img_width(fp_dev *dev)
-    int fp_dev_get_img_height(fp_dev *dev)
-
-    cpdef enum fp_enroll_result:
-        FP_ENROLL_COMPLETE = 1
-        FP_ENROLL_FAIL
-        FP_ENROLL_PASS
-        FP_ENROLL_RETRY = 100
-        FP_ENROLL_RETRY_TOO_SHORT
-        FP_ENROLL_RETRY_CENTER_FINGER
-        FP_ENROLL_RETRY_REMOVE_FINGER
-
-    int fp_enroll_finger_img(fp_dev *dev, fp_print_data **_print_data, fp_img **img)
-    int fp_enroll_finger(fp_dev *dev, fp_print_data **_print_data)
-
-    cpdef enum fp_verify_result:
-        FP_VERIFY_NO_MATCH = 0
-        FP_VERIFY_MATCH = 1
-        FP_VERIFY_RETRY = fp_enroll_result.FP_ENROLL_RETRY
-        FP_VERIFY_RETRY_TOO_SHORT = fp_enroll_result.FP_ENROLL_RETRY_TOO_SHORT
-        FP_VERIFY_RETRY_CENTER_FINGER = fp_enroll_result.FP_ENROLL_RETRY_CENTER_FINGER
-        FP_VERIFY_RETRY_REMOVE_FINGER = fp_enroll_result.FP_ENROLL_RETRY_REMOVE_FINGER
-
-    int fp_verify_finger_img(fp_dev *dev, fp_print_data *enrolled_print, fp_img **img)
-    int fp_verify_finger(fp_dev *dev, fp_print_data *enrolled_print)
-
-    int fp_dev_supports_identification(fp_dev *dev)
-    int fp_identify_finger_img(fp_dev *dev, fp_print_data **_print_gallery, size_t *match_offset, fp_img **img)
-    int fp_identify_finger(fp_dev *dev, fp_print_data **_print_gallery, size_t *match_offset)
-
-    # Data handling
-    int fp_print_data_load(fp_dev *dev, fp_finger finger, fp_print_data **data)
-    int fp_print_data_save(fp_print_data *data, fp_finger finger)
-    int fp_print_data_delete(fp_dev *dev, fp_finger finger)
-    void fp_print_data_free(fp_print_data *data)
-    size_t fp_print_data_get_data(fp_print_data *data, unsigned char **ret)
-    fp_print_data *fp_print_data_from_data(unsigned char *buf, size_t buflen)
-    uint16_t fp_print_data_get_driver_id(fp_print_data *data)
-    uint32_t fp_print_data_get_devtype(fp_print_data *data)
-
-    # Image handling
-    struct fp_minutia:
+    struct FpDevice:
+        pass
+    
+    struct FpContext:
         pass
 
-    int fp_img_get_height(fp_img *img)
-    int fp_img_get_width(fp_img *img)
-    unsigned char *fp_img_get_data(fp_img *img)
-    int fp_img_save_to_file(fp_img *img, char *path)
-    void fp_img_standardize(fp_img *img)
-    fp_img *fp_img_binarize(fp_img *img)
-    fp_minutia **fp_img_get_minutiae(fp_img *img, int *nr_minutiae)
-    int fp_minutia_get_coords(fp_minutia *minutia, int *x, int *y)
-    void fp_img_free(fp_img *img)
+    struct FpPrint:
+        pass
 
-    # Polling and timing
-    struct fp_pollfd:
-        int fd
-        short events
+    struct FpImageDevice:
+        pass
 
-    int fp_handle_events_timeout(timeval *timeout)
-    int fp_handle_events()
-    size_t fp_get_pollfds(fp_pollfd **pollfds)
-    int fp_get_next_timeout(timeval *tv)
+    struct FpImage:
+        pass
 
-    ctypedef void (*fp_pollfd_added_cb)(int fd, short events)
-    ctypedef void (*fp_pollfd_removed_cb)(int fd)
-    void fp_set_pollfd_notifiers(fp_pollfd_added_cb added_cb, fp_pollfd_removed_cb removed_cb)
+    ctypedef void FpMinutia
 
-    # Library
-    int fp_init()
-    void fp_exit()
+    cpdef enum FpDeviceType:
+        # The device is virtual device
+        FP_DEVICE_TYPE_VIRTUAL = 0
+        # The device is a USB device
+        FP_DEVICE_TYPE_USB
 
-    # Asynchronous I/O
+    cpdef enum FpDeviceRetry:
+        # Error codes representing scan failures resulting in the user needing to
+        # retry.
 
-    ctypedef void (*fp_operation_stop_cb)(fp_dev *dev, void *user_data)
-    ctypedef void (*fp_img_operation_cb)(fp_dev *dev, int result, fp_img *img, void *user_data)
 
-    ctypedef void (*fp_dev_open_cb)(fp_dev *dev, int status, void *user_data)
-    int fp_async_dev_open(fp_dscv_dev *ddev, fp_dev_open_cb callback, void *user_data)
-    void fp_async_dev_close(fp_dev *dev, fp_operation_stop_cb callback, void *user_data)
+        # The scan did not succeed due to poor scan quality
+        # or other general user scanning problem.
+        FP_DEVICE_RETRY_GENERAL = 0
 
-    ctypedef void (*fp_enroll_stage_cb)(fp_dev *dev, int result, fp_print_data *_print, fp_img *img, void *user_data)
-    int fp_async_enroll_start(fp_dev *dev, fp_enroll_stage_cb callback, void *user_data)
-    int fp_async_enroll_stop(fp_dev *dev, fp_operation_stop_cb callback, void *user_data)
-    int fp_async_verify_start(fp_dev *dev, fp_print_data *data, fp_img_operation_cb callback, void *user_data)
-    int fp_async_verify_stop(fp_dev *dev, fp_img_operation_cb callback, void *user_data)
+        # The scan did not succeed because the finger
+        # swipe was too short.
+        FP_DEVICE_RETRY_TOO_SHORT
 
-    ctypedef void (*fp_identify_cb)(fp_dev *dev, int result, size_t match_offset, fp_img *img, void *user_data)
-    int fp_async_identify_start(fp_dev *dev, fp_print_data **gallery, fp_identify_cb callback, void *user_data)
-    int fp_async_identify_stop(fp_dev *dev, fp_operation_stop_cb callback, void *user_data)
+        # The scan did not succeed because the finger
+        # was not centered on the scanner.
+        FP_DEVICE_RETRY_CENTER_FINGER
 
-    int fp_async_capture_start(fp_dev *dev, int unconditional, fp_img_operation_cb callback, void *user_data)
-    int fp_async_capture_stop(fp_dev *dev, fp_operation_stop_cb callback, void *user_data)
+        # The scan did not succeed due to quality or pressure problems
+        # the user should remove their finger from the scanner before 
+        # retrying.
+        FP_DEVICE_RETRY_REMOVE_FINGER
+
+    cpdef enum FpDeviceError:
+        # Error codes for device operations. More specific errors from other domains
+        # such as #G_IO_ERROR or #G_USB_DEVICE_ERROR may also be reported.
+
+        # A general error occured.
+        FP_DEVICE_ERROR_GENERAL
+        # The device does not support the requested operation.
+        FP_DEVICE_ERROR_NOT_SUPPORTED
+        # The device needs to be opened to start this operation.
+        FP_DEVICE_ERROR_NOT_OPEN
+        # The device has already been opened.
+        FP_DEVICE_ERROR_ALREADY_OPEN
+        # The device is busy with another request.
+        FP_DEVICE_ERROR_BUSY
+        # Protocol error
+        FP_DEVICE_ERROR_PROTO
+        # The passed data is invalid
+        FP_DEVICE_ERROR_DATA_INVALID
+        # Requested print was not found on device
+        FP_DEVICE_ERROR_DATA_NOT_FOUND
+        # No space on device available for operation
+        FP_DEVICE_ERROR_DATA_FULL
+
+    cpdef enum FpScanType:
+        # Sensor requires swiping the finger.
+        FP_SCAN_TYPE_SWIPE = 0
+        # Sensor requires placing/pressing down the finger.
+        FP_SCAN_TYPE_PRESS
+
+    cpdef enum FpFinger:
+        # The finger is unknown
+        FP_FINGER_UNKNOWN
+        # Left thumb
+        FP_FINGER_LEFT_THUMB
+        # Left index finger
+        FP_FINGER_LEFT_INDEX
+        # Left middle finger
+        FP_FINGER_LEFT_MIDDLE
+        # Left ring finger
+        FP_FINGER_LEFT_RING
+        # Left little finger
+        FP_FINGER_LEFT_LITTLE
+        # Right thumb
+        FP_FINGER_RIGHT_THUMB
+        # Right index finger
+        FP_FINGER_RIGHT_INDEX
+        # Right middle finger
+        FP_FINGER_RIGHT_MIDDLE
+        # Right ring finger
+        FP_FINGER_RIGHT_RING
+        # Right little finger
+        FP_FINGER_RIGHT_LITTLE
+        # The first finger in the fp-print order
+        FP_FINGER_FIRST
+        # The last finger in the fp-print order
+        FP_FINGER_LAST
+
+    ctypedef void (*FpEnrollProgress)(
+        FpDevice *device,
+        # Number eof completed stage
+        gint completed_stages,
+        # The last scanned print
+        FpPrint *_print,
+        # User provided data.
+        gpointer user_data,
+        # The error is guaranteed to be of type FP_DEVICE_RETRY if set
+        GError *error)
+
+
+    # Report the result of a match(identify or verify) operation.
+    #
+    # If @match is non-%NULL, then it is set to the matching #FpPrint as passed
+    # to the match operation. In this case @error will always be %NULL.
+    #
+    # If @error is not %NULL then its domain is guaranteed to be
+    # %FP_DEVICE_RETRY. All other error conditions will not be reported using
+    # this callback. If such an error occurs before a match/no-match decision
+    # can be made, then this callback will not be called. Should an error
+    # happen afterwards, then you will get a match report through this callback
+    # and an error when the operation finishes.
+    #
+    # If @match and @error are %NULL, then a finger was presented but it did not
+    # match any known print.
+    #
+    # @print represents the newly scanned print. The driver may or may not
+    # provide this information. Image based devices will provide it and it
+    # allows access to the raw data.
+    #
+    # This callback exists because it makes sense for drivers to wait e.g. on
+    # finger removal before completing the match operation. However, the
+    # success/failure can often be reported at an earlier time, and there is
+    # no need to make the user wait.
+
+    ctypedef void (*FpMatchCb)(
+        FpDevice *device,
+        # The matching print if any matched @print
+        FpPrint *match,
+        # The newly scanned print
+        FpPrint *_print,
+        # User provided data
+        gpointer user_data,
+        GError *error)
+    
+    # Image
+    FpImage *fp_image_new (gint width, gint height)
+    guint fp_image_get_width (FpImage *self)
+    guint fp_image_get_height (FpImage *self)
+    gdouble fp_image_get_ppmm (FpImage *self)
+    const guchar * fp_image_get_data (FpImage *self, gsize *len)
+    const guchar * fp_image_get_binarized (FpImage *self, gsize *len)
+    void fp_minutia_get_coords (FpMinutia *min, gint *x, gint *y)
+    GPtrArray * fp_image_get_minutiae (FpImage *self)
+    void fp_image_detect_minutiae (
+        FpImage *self,
+        GCancellable *cancellable,
+        GAsyncReadyCallback callback,
+        gpointer user_data)
+    gboolean fp_image_detect_minutiae_finish (
+        FpImage *self,
+        GAsyncResult *result,
+        GError **error)
+
+    # Image device
+    FpImageDevice *fp_image_device_new()
+
+    # Print
+    FpPrint *fp_print_new(FpDevice *device)
+    FpPrint *fp_print_new_from_data(guchar *data, gsize length)
+    gboolean fp_print_to_data(guchar **data, gsize length)
+    const gchar *fp_print_get_driver(FpPrint *_print)
+    const gchar *fp_print_get_device_id(FpPrint *_print)
+    FpImage *fp_print_get_image(FpPrint *_print)
+    FpFinger fp_print_get_finger(FpPrint *_print)
+    const gchar *fp_print_get_username(FpPrint *_print)
+    const gchar *fp_print_get_description(FpPrint *_print)
+    const GDate *fp_print_get_enroll_date(FpPrint *_print)
+    gboolean fp_print_get_device_stored(FpPrint *_print)
+    void fp_print_set_finger(FpPrint *_print, FpFinger finger)
+    void fp_print_set_username(FpPrint *_print, const gchar *username)
+    void fp_print_set_description(FpPrint *_print, const gchar *description)
+    void fp_print_set_enroll_date(FpPrint *_print, const GDate *enroll_date)
+    gboolean fp_print_compatible(FpPrint *self, FpDevice *device)
+    gboolean fp_print_equal(FpPrint *self, FpPrint *other)
+    gboolean fp_print_serialize(
+        FpPrint *_print,
+        guchar **data, 
+        gsize *length, 
+        GError **error)
+    FpPrint *fp_print_deserialize(
+        const guchar *data, 
+        gsize length, 
+        GError **error)
+
+    # Device
+    FpDevice *fp_device_new()
+    const gchar *fp_device_get_driver(FpDevice *device)
+    const gchar *fp_device_get_device_id(FpDevice *device)
+    const gchar *fp_device_get_name(FpDevice *device)
+    gboolean fp_device_is_open(FpDevice *device)
+    FpScanType fp_device_get_scan_type(FpDevice *device)
+    gint fp_device_get_nr_enroll_stages(FpDevice *device)
+    gboolean fp_device_supports_identify(FpDevice *device)
+    gboolean fp_device_supports_capture(FpDevice *device)
+    gboolean fp_device_has_storage(FpDevice *device)
+
+    # Context
+    FpContext *fp_context_new()
+    void fp_context_enumerate(FpContext *context)
+    GPtrArray *fp_context_get_devices(FpContext *context)
+    GQuark fp_device_retry_quark()
+    GQuark fp_device_error_quark()
+    GType fp_device_type_get_type()
+    GType fp_scan_type_get_type()
+    GType fp_device_retry_get_type()
+    GType fp_device_error_get_type()
+    GType fp_finger_get_type()
+
+    # Openning device
+    void fp_device_open(
+        FpDevice *device,
+        GCancellable *cancellable,
+        GAsyncReadyCallback callback,
+        gpointer user_data)
+
+    void fp_device_close(
+        FpDevice *device,
+        GCancellable *cancellable,
+        GAsyncReadyCallback callback,
+        gpointer user_data)
+
+    void fp_device_enroll(
+        FpDevice *device,
+        FpPrint *template_print,
+        GCancellable *cancellable,
+        FpEnrollProgress progress_cb,
+        gpointer progress_data,
+        GDestroyNotify progress_destroy,
+        GAsyncReadyCallback callback,
+        gpointer user_data)
+
+    void fp_device_verify(
+        FpDevice *device,
+        FpPrint *enrolled_print,
+        GCancellable *cancellable,
+        FpMatchCb match_cb,
+        gpointer match_data,
+        GDestroyNotify match_destroy,
+        GAsyncReadyCallback callback,
+        gpointer user_data)
+
+    void fp_device_identify(
+        FpDevice *device,
+        GPtrArray *prints,
+        GCancellable *cancellable,
+        FpMatchCb match_cb,
+        gpointer match_data,
+        GDestroyNotify match_destroy,
+        GAsyncReadyCallback callback,
+        gpointer user_data)
+
+    void fp_device_capture(
+        FpDevice *device,
+        gboolean wait_for_finger,
+        GCancellable *cancellable,
+        GAsyncReadyCallback callback,
+        gpointer user_data)
+
+    void fp_device_delete_print(
+        FpDevice *device,
+        FpPrint *enrolled_print,
+        GCancellable *cancellable,
+        GAsyncReadyCallback callback,
+        gpointer user_data)
+
+    void fp_device_list_prints(
+        FpDevice *device,
+        GCancellable *cancellable,
+        GAsyncReadyCallback callback,
+        gpointer user_data)
+
+    gboolean fp_device_open_finish(
+        FpDevice *device,
+        GAsyncResult *result,
+        GError **error)
+
+    gboolean fp_device_close_finish(
+        FpDevice *device,
+        GAsyncResult *result,
+        GError **error)
+
+    FpPrint *fp_device_enroll_finish(
+        FpDevice *device,
+        GAsyncResult *result,
+        GError **error)
+
+    gboolean fp_device_verify_finish(
+        FpDevice *device,
+        GAsyncResult *result,
+        gboolean *match,
+        FpPrint **_print,
+        GError **error)
+
+    gboolean fp_device_identify_finish(
+        FpDevice *device,
+        GAsyncResult *result,
+        FpPrint **match,
+        FpPrint **_print,
+        GError **error)
+
+    FpImage * fp_device_capture_finish(
+        FpDevice *device,
+        GAsyncResult *result,
+        GError **error)
+
+    gboolean fp_device_delete_print_finish(
+        FpDevice *device,
+        GAsyncResult *result,
+        GError **error)
+
+    GPtrArray * fp_device_list_prints_finish(
+        FpDevice *device,
+        GAsyncResult *result,
+        GError **error)
+
+    gboolean fp_device_open_sync(
+        FpDevice *device,
+        GCancellable *cancellable,
+        GError **error)
+
+    gboolean fp_device_close_sync(
+        FpDevice *device,
+        GCancellable *cancellable,
+        GError **error)
+
+    FpPrint * fp_device_enroll_sync(
+        FpDevice *device,
+        FpPrint *template_print,
+        GCancellable *cancellable,
+        FpEnrollProgress progress_cb,
+        gpointer progress_data,
+        GError **error)
+
+    gboolean fp_device_verify_sync(
+        FpDevice *device,
+        FpPrint *enrolled_print,
+        GCancellable *cancellable,
+        FpMatchCb match_cb,
+        gpointer match_data,
+        gboolean *match,
+        FpPrint **_print,
+        GError **error)
+
+    gboolean fp_device_identify_sync(
+        FpDevice *device,
+        GPtrArray *prints,
+        GCancellable *cancellable,
+        FpMatchCb match_cb,
+        gpointer match_data,
+        FpPrint **match,
+        FpPrint **_print,
+        GError **error)
+
+    FpImage * fp_device_capture_sync(
+        FpDevice *device,
+        gboolean wait_for_finger,
+        GCancellable *cancellable,
+        GError **error)
+
+    gboolean fp_device_delete_print_sync(
+        FpDevice *device,
+        FpPrint *enrolled_print,
+        GCancellable *cancellable,
+        GError **error)
+
+    GPtrArray * fp_device_list_prints_sync(
+        FpDevice *device,
+        GCancellable *cancellable,
+        GError **error)
+
