@@ -1,3 +1,5 @@
+# DEPRECATED: Use official libfrpint (>= v1.90) with glib introspection
+
 # Requirements
 
 - Cython >= 0.27
