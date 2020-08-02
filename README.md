@@ -1,5 +1,9 @@
 # DEPRECATED: Use official libfrpint (>= v1.90) with glib introspection
 
+Example from official repo https://gitlab.freedesktop.org/libfprint/libfprint/-/blob/master/tests/capture.py
+
+More about GLib Introspection: https://pygobject.readthedocs.io/en/latest/
+
 # Requirements
 
 - Cython >= 0.27
