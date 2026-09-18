@@ -1,4 +1,4 @@
-# DEPRECATED: Use official libfrpint (>= v1.90) with glib introspection
+# DEPRECATED: Use official libfprint (>= v1.90) with glib introspection
 
 Example from official repo https://gitlab.freedesktop.org/libfprint/libfprint/-/blob/master/tests/capture.py
 
